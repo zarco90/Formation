@@ -1,0 +1,385 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# DeepLearning.AI TensorFlow Developer\n",
+    "\n",
+    "## C04 - Sequences, Time Series and Prediction\n",
+    "\n",
+    "### W01 - Sequences and prediction\n",
+    "\n",
+    "#### Introduction\n",
+    "\n",
+    "We're going to start by creating a synthetic sequence of data, so that we can start looking at what the common attributes that you see in data series are. So for example, whether data can be seasonal. You can also, in some cases, have trends of data, and then of course the random factor that makes it hard to predict is noise. So we want to start looking at various methods that can be used statistically in the Machine Learning to help us predict data given seasonality trend and noise."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Time series\n",
+    "\n",
+    "A time series is typically defined as an ordered sequence of values that are usually equally spaced over time. There is a single value at each time step, and as a results, the term univariate is used to describe them. You may also encounter time series that have multiple values at each time step, called Multivariate Time Series. Multivariate Time Series charts can be useful ways of understanding the impact of related data."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Machine learning applied to time series\n",
+    "\n",
+    "What types of things can we do with machine learning over time series? The first and most obvious is prediction of forecasting based on the data. In some cases, you might also want to project back into the past to see how we got to where we are now. This process is called imputation. Now maybe you want to get an idea for what the data would have been like had you been able to collect it before the data you already have. Or you might simply want to fill in holes in your data for what data doesn't already exist. Additionally, time series prediction can be used to detect anomalies. The other option is to analyze the time series to spot patterns in them that determine what generated the series itself. A classic example of this is to analyze sound waves to spot words in them which can be used as a neural network for speech recognition."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Common patterns in time series\n",
+    "\n",
+    "Time-series come in all shapes and sizes, but there are a number of very common patterns. So it's useful to recognize them when you see them.\n",
+    "The first is trend, where time series have a specific direction that they're moving in.\n",
+    "Another concept is seasonality, which is seen when patterns repeat at predictable intervals.\n",
+    "Some time series can have a combination of both trend and seasonality.\n",
+    "\n",
+    "But of course, there are also some that are probably not predictable at all and just a complete set of random values producing what's typically called white noise. There's not a whole lot you can do with this type of data.\n",
+    "\n",
+    "Consider this time series. There's no trend and there's no seasonality. The spikes appear at random timestamps. You can't predict when that will happen next or how strong they will be. But clearly, the entire series isn't random. Between the spikes there's a very deterministic type of decay. We can see here that the value of each time step is 99 percent of the value of the previous time step plus an occasional spike. This is an auto correlated time series. Namely it correlates with a delayed copy of itself often called a lag. This example you can see at lag one there's a strong autocorrelation. Often a time series like this is described as having memory as steps are dependent on previous ones. The spikes which are unpredictable are often called Innovations. In other words, they cannot be predicted based on past values.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/spikes.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "Time series you'll encounter in real life probably have a bit of each of these features: trend, seasonality, autocorrelation, and noise. As we've learned a machine-learning model is designed to spot patterns, and when we spot patterns we can make predictions. For the most part this can also work with time series except for the noise which is unpredictable. But we should recognize that this assumes that patterns that existed in the past will of course continue on into the future. Of course, real life time series are not always that simple. Their behavior can change drastically over time. We'll typically call this a non-stationary time series. To predict on this we could just train for limited period of time. If it's stationary, meaning its behavior does not change over time, then great. The more data you have the better. But if it's not stationary then the optimal time window that you should use for training will vary."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Train, validation and test sets\n",
+    "\n",
+    "We could, for example, take the last value and assume that the next value will be the same one, and this is called naive forecasting. We can do that to get a baseline at the very least. That baseline can be pretty good.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/naive_forecasting.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "<td> <img src=\"time_series/fixed_partitioning.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "To measure the performance of our forecasting model, we typically want to split the time series into a training period, a validation period and a test period. This is called fixed partitioning. If the time series has some seasonality, you generally want to ensure that each period contains a whole number of seasons. While this might appear a little different from the training validation test, that you might be familiar with from non-time series data sets, where you just picked random values out of the corpus to make all three, you should see that the impact is effectively the same.\n",
+    "\n",
+    "Next you'll train your model on the training period, and you'll evaluate it on the validation period. Here's where you can experiment to find the right architecture for training. And work on it and your hyper parameters, until you get the desired performance, measured using the validation set. Often, once you've done that, you can retrain using both the training and validation data. And then test on the test period to see if your model will perform just as well. And if it does, then you could take the unusual step of retraining again, using also the test data. But why would you do that? Well, it's because the test data is the closest data you have to the current point in time. And as such it's often the strongest signal in determining future values. If your model is not trained using that data, too, then it may not be optimal. Due to this, it's actually quite common to forgo a test set all together. And just train, using a training period and a validation period, and the test set is in the future. \n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/fixed_partitioning2.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "<td> <img src=\"time_series/rolled_forward_partitioning.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "Fixed partitioning like this is very simple and very intuitive, but there's also another way. We start with a short training period, and we gradually increase it, say by one day at a time, or by one week at a time. At each iteration, we train the model on a training period. And we use it to forecast the following day, or the following week, in the validation period. And this is called roll-forward partitioning. You could see it as doing fixed partitioning a number of times, and then continually refining the model as such."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Metrics for evaluating performance\n",
+    "\n",
+    "Once we have a model and a period, then we can evaluate the model on it, and we'll need a metric to calculate their performance.\n",
+    "\n",
+    "So let's start simply by calculating the errors, which is the difference between the forecasted values from our model and the actual values over the evaluation period.\n",
+    "\n",
+    "The most common metric to evaluate the forecasting performance of a model is the mean squared error or mse where we square the errors and then calculate their mean.\n",
+    "\n",
+    "Another common metric and one of my favorites is the mean absolute error or mae, and it's also called the main absolute deviation or mad. Depending on your task, you may prefer the mae or the mse. For example, if large errors are potentially dangerous and they cost you much more than smaller errors, then you may prefer the mse. But if your gain or your loss is just proportional to the size of the error, then the mae may be better.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/metrics.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "Also, you can measure the mean absolute percentage error or mape, this is the mean ratio between the absolute error and the absolute value, this gives an idea of the size of the errors compared to the values."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Moving average and differencing\n",
+    "\n",
+    "A common and very simple forecasting method is to calculate a moving average. The idea here is that the yellow line is a plot of the average of the blue values over a fixed period called an averaging window, for example, 30 days. Now this nicely eliminates a lot of the noise and it gives us a curve roughly emulating the original series, but it does not anticipate trend or seasonality. Depending on the current time i.e. the period after which you want to forecast for the future, it can actually end up being worse than a naive forecast.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/mov_avg_1.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "<td> <img src=\"time_series/mov_avg_2.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "One method to avoid this is to remove the trend and seasonality from the time series with a technique called differencing. So instead of studying the time series itself, we study the difference between the value at time T and the value at an earlier period. Depending on the time of your data, that period might be a year, a day, a month or whatever. Let's look at a year earlier. So for this data, at time T minus 365, we'll get this difference time series which has no trend and no seasonality. We can then use a moving average to forecast this time series which gives us these forecasts. But these are just forecasts for the difference time series, not the original time series. To get the final forecasts for the original time series, we just need to add back the value at time T minus 365. It's slightly better than naive forecasting but not tremendously better. You may have noticed that our moving average removed a lot of noise but our final forecasts are still pretty noisy. That noise comes from the past values that we added back into our forecasts. So we can improve these forecasts by also removing the past noise using a moving average on that. Apparently, with this approach, we're not too far from the optimal. Keep this in mind before you rush into deep learning. Simple approaches sometimes can work just fine."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Trailing versus centered windows\n",
+    "\n",
+    "Note that when we use the trailing window when computing the moving average of present values from t minus 32, t minus one. But when we use a centered window to compute the moving average of past values from one year ago, that's t minus one year minus five days, to t minus one year plus five days. Then moving averages using centered windows can be more accurate than using trailing windows. But we can't use centered windows to smooth present values since we don't know future values. However, to smooth past values we can afford to use centered windows."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### W02 - Deep Neural Networks for Time Series\n",
+    "\n",
+    "#### Preparing features and labels\n",
+    "\n",
+    "First of all, as with any other ML problem, we have to divide our data into features and labels. In this case our feature is effectively a number of values in the series, with our label being the next value. We'll call that number of values that will treat as our feature, the window size, where we're taking a window of the data and training an ML model to predict the next value. So for example, if we take our time series data, say, 30 days at a time, we'll use 30 values as the feature and the next value is the label. Then over time, we'll train a neural network to match the 30 features to the single label.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/pre_fea_lab.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "Sequence bias is when the order of things can impact the selection of things.\n",
+    "\n",
+    "Check notebook C4_W2_Lab_1_features_and_labels.ipynb on github\n",
+    "https://github.com/zarco90/Formation/blob/main/C4/W2/ungraded_labs/C4_W2_Lab_1_features_and_labels.ipynb\n",
+    "\n",
+    "#### Feeding windowed dataset into neural network"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def windowed_dataset(series, window_size, batch_size, shuffle_buffer):\n",
+    "    dataset = tf.data.Dataset.from_tensor_slices(series)\n",
+    "    dataset = dataset.window(window_size + 1, shift=1, drop_remainder=True)\n",
+    "    dataset = dataset.flat_map(lambda window: window.batch(window_size + 1)\n",
+    "    dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-1], window[-1]))\n",
+    "    dataset = dataset.batch(batch_size).prefetch(1)\n",
+    "    return dataset"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Check notebook C4_W2_Lab_2_single_layer_NN.ipynb on github.\n",
+    "\n",
+    "https://github.com/zarco90/Formation/blob/main/C4/W2/ungraded_labs/C4_W2_Lab_2_single_layer_NN.ipynb"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Deep neural network training, tuning and prediction\n",
+    "\n",
+    "We might learn more efficiently and build a better model if we pick the optimal learning rate. For this purpose, we can use a technique that uses callbacks.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/dnn_tune_1.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "The callback tweaks the learning rate using a learning rate scheduler. This will be called at the callback at the end of each epoch. It will change the learning rates to a value based on the epoch number.\n",
+    "\n",
+    "After training with this, we can then plot the loss per epoch against the learning rate per epoch. The y-axis shows us the loss for that epoch and the x-axis shows us the learning rate. We can then try to pick the lowest point of the curve where it's still relatively stable, 7 times 10 to the -6.\n",
+    "\n",
+    "So let's set that to be our learning rate and then we'll retrain for a bit longer. We can see that the loss was continuing to decrease even after 500 epochs.\n",
+    "\n",
+    "Check notebook C4_W2_Lab_3_deep_NN.ipynb and C4_W2_Assignment_Solution.ipynb on Github.\n",
+    "\n",
+    "https://github.com/zarco90/Formation/blob/main/C4/W2/ungraded_labs/C4_W2_Lab_3_deep_NN.ipynb\n",
+    "https://github.com/zarco90/Formation/blob/main/C4/W2/assignment/C4_W2_Assignment_Solution.ipynb"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### W03 - Recurrent Neural Networks for time series\n",
+    "\n",
+    "#### Introduction\n",
+    "\n",
+    "In this week, you get to apply RNNs and LTSM to the time sequence data. NLP uses a lot about RNNs and LSTMs there, and things like the state vector and the cell state in these allow you to maintain context across a series. And with something like a time series data, if you're looking at maybe a 30-day window, the likelihood in some time series of data closer to your predictive date, having a bigger impact on data further away.\n",
+    "\n",
+    "Lambda layers gives comfort because it has some control over what's going on in neural networks. It just does whatever it wants to do, or whatever it's been designed to do. In Tensorflow and with Keras, Lambda layers allow us to write effectively an arbitrary piece of code as a layer in the neural network."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### RNN\n",
+    "\n",
+    "A Recurrent Neural Network, or RNN is a neural network that contains recurrent layers. These are designed to sequentially processes sequence of inputs. RNNs are pretty flexible, able to process all kinds of sequences. They can be used for predicting text and to process the time series. This example, will build an RNN that contains two recurrent layers and a final dense layer, which will serve as the output.\n",
+    "\n",
+    "One difference will be that the full input shape when using RNNs is three-dimensional. The first dimension will be the batch size, the second will be the timestamps, and the third is the dimensionality of the inputs at each time step. For example, if it's a univariate time series, this value will be one, for multivariate it'll be more. The models you've been using to date had two-dimensional inputs, the batch dimension was the first, and the second had all the input features.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/RNN_1.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "<td> <img src=\"time_series/RNN_2.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "What it looks like there's lots of cells, there's actually only one, and it's used repeatedly to compute the outputs. It's just the same one being reused multiple times by the layer. At each time step, the memory cell takes the input value for that step. So for example, it is zero at time zero, and zero state input. It then calculates the output for that step, in this case Y0, and a state vector H0 that's fed into the next step. H0 is fed into the cell with X1 to produce Y1 and H1. These steps will continue until we reach the end of our input dimension, which in this case has 30 values. The values recur due to the output of the cell, a one-step being fed back into itself at the next time step."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Shape of the inputs to the RNN\n",
+    "\n",
+    "The inputs are three dimensional. So for example, if we have a window size of 30 timestamps and we're batching them in sizes of four, the shape will be 4 times 30 times 1, and each timestamp, the memory cell input will be a four by one matrix, like this. The cell will also take the input of the state matrix from the previous step. But of course in the first step, this will be zero. For subsequent ones, it'll be the output from the memory cell. But other than the state vector, the cell of course will output a Y value. If the memory cell is comprised of three neurons, then the output matrix will be four by three because the batch size coming in was four and the number of neurons is three. So the full output of the layer is three dimensional, in this case, 4 by 30 by 3. With four being the batch size, three being the number of units, and 30 being the number of overall steps.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/RNN_3.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "In a simple RNN, the state output H is just a copy of the output matrix Y. At each timestamp, the memory cell gets both the current input and also the previous output.\n",
+    "\n",
+    "Now, in some cases, you might want to input a sequence, but you don't want to output on and you just want to get a single vector for each instance in the batch. This is typically called a sequence to vector RNN. But in reality, all you do is ignore all of the outputs, except the last one. When using Keras in TensorFlow, this is the default behavior. So if you want the recurrent layer to output a sequence, you have to specify returns sequences equals true when creating the layer. You'll need to do this when you stack one RNN layer on top of another."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Outputting a sequence\n",
+    "\n",
+    "So consider this RNN, these has two recovered layers, and the first has return_sequences=True set up. It will output a sequence which is fed to the next layer. The next layer does not have return_sequence that's set to True, so it will only output to the final step. But notice the input_shape, it's set to None and 1. TensorFlow assumes that the first dimension is the batch size, and that it can have any size at all, so you don't need to define it. Then the next dimension is the number of timestamps, which we can set to none, which means that the RNN can handle sequences of any length. The last dimension is just one because we're using a unit vary of time series.\n",
+    "\n",
+    "If we set return_sequences to true and all recurrent layers, then they will all output sequences and the dense layer will get a sequence as its inputs. Keras handles this by using the same dense layer independently at each time stamp. It might look like multiple ones here but it's the same one that's being reused at each time step. This gives us what is called a sequence to sequence RNN. It's fed a batch of sequences and it returns a batch of sequences of the same length. The dimensionality may not always match. It depends on the number of units in the memory sale.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/RNN_4.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "<td> <img src=\"time_series/RNN_5.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Lambda layers\n",
+    "\n",
+    "Lambda layer is one that allows us to perform arbitrary operations to effectively expand the functionality of TensorFlow's kares, and we can do this within the model definition itself.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/lambda_1.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "So the first Lambda layer will be used to help us with our dimensionality. If you recall when we wrote the window dataset helper function, it returned two-dimensional batches of windows on the data, with the first being the batch size and the second the number of timestamps. But an RNN expects three-dimensions; batch size, the number of timestamps, and the series dimensionality. With the Lambda layer, we can fix this without rewriting our window dataset helper function. Using the Lambda, we just expand the array by one dimension. By setting input shape to none, we're saying that the model can take sequences of any length.\n",
+    "\n",
+    "Similarly, if we scale up the outputs by 100, we can help training. The default activation function in the RNN layers is tanH. This outputs values between negative one and one. Since the time series values are in that order usually in the 10s like 40s, 50s, 60s, and 70s, then scaling up the outputs to the same ballpark can help us with learning. We can do that in a Lambda layer too, we just simply multiply that by a 100."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Adjusting the learning rate dynamically\n",
+    "\n",
+    "Here's the code for training the RNN with two layers each with 40 cells. To tune the learning rate, we'll set up a callback. Every epoch this just changes the learning rate a little so that it steps all the way from 1 times 10 to the minus 8 to 1 times 10 to the minus 6.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/Huber.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "The Huber function is a loss function that's less sensitive to outliers."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### LSTM\n",
+    "\n",
+    "For RNN, while state is a factor in subsequent calculations, its impacts can diminish greatly over timestamps. LSTMs are the cell state to this that keep a state throughout the life of the training so that the state is passed from cell to cell, timestamp to timestamp, and it can be better maintained. This means that the data from earlier in the window can have a greater impact on the overall projection than in the case of RNNs. The state can also be bidirectional so that state moves forwards and backwards.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/lstm_1.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Coding LSTMs\n",
+    "\n",
+    "tf.keras.backend.clear_session clears any internal variables. That makes it easy for us to experiment without models impacting later versions of themselves.\n",
+    "There are two bidirectional-LSTM layers with 32 cells. The output neuron will give us our prediction value. Return sequences is equal to true on the first one in order for this to work.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/code_lstm.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### W04 - Real-world time series data\n",
+    "\n",
+    "#### Convolutions\n",
+    "\n",
+    "In order to improve the model, a 1D convolutional layer will be added, with 5 filters. It works the same way as CONV2D (filters) in image classification.\n",
+    "\n",
+    "#### Bi-directional LSTMs\n",
+    "\n",
+    "One common cause for small spikes is a small batch size introducing further random noise. So in this case it's worth experimenting with different batch sizes.\n",
+    "\n",
+    "<table><tr>\n",
+    "<td> <img src=\"time_series/Bi_LSTM.jpg\" style=\"height: 300px;\"/> </td>\n",
+    "</tr></table>\n",
+    "\n",
+    "By combining CNNs and LSTMs, we've been able to build our best model despite some rough edges that could be refined."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Real data sunspots\n",
+    "\n",
+    "Real data from sunspots is actually a Kaggle challenge. It tracks sunspots on a monthly basis from 1749 until 2018.\n",
+    "\n",
+    "https://www.kaggle.com/robervalt/sunspots"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Train and tune the model\n",
+    "\n",
+    "When tuning the model, try to change the window size, the layers structure, the learning rate, ..."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
